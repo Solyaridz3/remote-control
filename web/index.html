@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d121a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Remote">
+  <title>Remote · iPhone → Windows</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/viewport.js" defer></script>
+  <script src="/keyboard.js" defer></script>
+  <script src="/gestures.js" defer></script>
+  <script src="/screen.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <section id="touchScreen" class="touch-screen" aria-label="Тачпад">
+      <header class="touch-toolbar">
+        <div><h1>Remote<span class="title-dot">.</span></h1><p id="touchConnection" role="status">Офлайн</p></div>
+        <button id="openControls" class="panel-button" type="button" aria-controls="controlScreen">Пункт управления</button>
+        <div class="toolbar-actions">
+          <button id="openKeyboard" class="keyboard-toggle" type="button" aria-label="Открыть клавиатуру" aria-controls="keyboardDialog" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 15h10"/></svg>
+            <span>Клавиатура</span>
+          </button>
+          <label id="magnifierToggle" class="magnifier-toggle"><input id="magnifierEnabled" type="checkbox" disabled><span>Лупа</span></label>
+          <label id="screenToggle" class="magnifier-toggle"><input id="screenEnabled" type="checkbox" disabled><span>Экран</span></label>
+        </div>
+      </header>
+      <section id="touchpad" class="touchpad" aria-label="Тачпад ноутбука" aria-describedby="gestureHelp">
+        <img id="screenImage" class="screen-image" alt="Область экрана ноутбука вокруг курсора" draggable="false" hidden>
+        <div class="pad-top"><span>ТАЧПАД</span><span id="padState">WI-FI</span></div>
+        <div class="pad-center" aria-hidden="true">
+          <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><path d="m14 7 24 19-13 2-7 12-4-33Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          <span id="padHint">ВАШ ТАЧПАД</span>
+        </div>
+        <span class="pad-help" id="gestureHelp">Касание — клик · Разведение — растянуть</span>
+        <span id="touchDot" class="touch-dot" hidden></span>
+        <span id="screenStatus" class="screen-status" role="status" hidden></span>
+      </section>
+      <div class="home-gesture-space" aria-hidden="true"></div>
+    </section>
+    <section id="controlScreen" class="controls control-screen" aria-label="Пункт управления" hidden>
+      <button id="backToTouchpad" class="back-button" type="button" aria-controls="touchScreen">Назад к тачпаду</button>
+      <header>
+        <div><h1>Пункт управления</h1><p id="computer">iPhone → Windows</p></div>
+        <span id="badge" class="badge"><span class="status-dot"></span><span id="badgeText">Офлайн</span></span>
+      </header>
+      <section class="volume" aria-label="Громкость ноутбука">
+        <h2>ГРОМКОСТЬ НОУТБУКА</h2>
+        <div class="volume-buttons">
+          <button type="button" data-volume="down" aria-label="Уменьшить громкость" disabled>
+            <svg viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="M16 12h6"/></svg><span>Тише</span>
+          </button>
+          <button type="button" data-volume="mute" aria-label="Включить или выключить звук" disabled>
+            <svg viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="m16 9 6 6m0-6-6 6"/></svg><span>Звук</span>
+          </button>
+          <button type="button" data-volume="up" aria-label="Увеличить громкость" disabled>
+            <svg viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="M19 9v6m-3-3h6"/></svg><span>Громче</span>
+          </button>
+        </div>
+      </section>
+      <section class="magnifier-panel" aria-labelledby="magnifierTitle">
+        <div class="magnifier-heading"><h2 id="magnifierTitle">НАСТРОЙКИ ЛУПЫ</h2></div>
+        <label for="magnifierRadius">Радиус круга <output id="magnifierRadiusValue">160 px</output></label>
+        <input id="magnifierRadius" type="range" min="80" max="280" step="10" value="160">
+        <label for="magnifierZoom">Увеличение <output id="magnifierZoomValue">2.0×</output></label>
+        <input id="magnifierZoom" type="range" min="150" max="400" step="10" value="200">
+        <label for="magnifierMode">Положение лупы</label>
+        <select id="magnifierMode"><option value="center">Вокруг курсора</option><option value="offset">Сбоку от курсора</option></select>
+        <p id="magnifierStatus" role="status">Подключитесь к ноутбуку, чтобы включить лупу.</p>
+      </section>
+      <div class="connection-buttons">
+        <button id="connect" class="primary" type="button"><span id="connectLabel">Подключить ноутбук</span></button>
+        <button id="disconnect" class="power" type="button" aria-label="Отключиться от ноутбука" disabled>
+          <svg viewBox="0 0 24 24"><path d="M12 3v9m-5-7a9 9 0 1 0 10 0"/></svg>
+        </button>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite">Откройте Remote на ноутбуке и подключитесь по коду.</p>
+      <details class="settings">
+        <summary>Жесты и настройки <span aria-hidden="true">＋</span></summary>
+        <div class="settings-content">
+          <p id="rememberedInfo" hidden>Телефон запомнен. При открытии страницы он подключится без кода. Отозвать доступ можно в Windows → «Сохранённые устройства».</p>
+          <label for="sensitivity">Чувствительность <output id="sensitivityValue">1.5×</output></label>
+          <input id="sensitivity" type="range" min="0.5" max="3" step="0.1" value="1.5">
+          <label class="smooth-choice"><input id="smoothing" type="checkbox" checked> Плавный курсор</label>
+          <p>Смягчает мелкие рывки движения. Можно выключить, если предпочитаете более резкую реакцию.</p>
+          <p>Один палец — курсор. Касание — левый клик. Два быстрых касания — двойной клик. Для выделения или перетаскивания: коснитесь дважды, на втором касании не отпускайте палец и ведите его. Во время перетаскивания можно поднять палец и в течение 0,8 секунды коснуться тачпада в другом месте, чтобы продолжить. Чтобы отпустить объект, подождите 0,8 секунды или коротко коснитесь тачпада. Касание двумя пальцами — правый клик. Совместное движение двух пальцев — прокрутка. Разводите или сводите пальцы — плавно увеличивайте или уменьшайте изображение в программе под курсором.</p>
+          <p>Перед жестом наведите курсор на изображение. Результат зависит от поддержки pinch в программе и версии Windows. После начала прокрутки отпустите пальцы, чтобы начать растягивание.</p>
+          <p>Для значка на iPhone: Safari → «Поделиться» → «На экран Домой». Пока пользуетесь тачпадом, держите страницу открытой.</p>
+          <p class="privacy">Управление, текст и трансляция защищены HTTPS. Перед первым подключением установите и проверьте сертификат по инструкции в окне Remote на ноутбуке. При сворачивании связь прерывается; сохранённый телефон подключается снова при возвращении.</p>
+        </div>
+      </details>
+      <footer>ЛОКАЛЬНАЯ СВЯЗЬ <span>БЕЗ ОБЛАКА</span></footer>
+    </section>
+  </main>
+
+  <dialog id="keyboardDialog" class="keyboard-dialog" aria-labelledby="keyboardTitle">
+    <div class="dialog-heading"><h2 id="keyboardTitle">Клавиатура</h2><button id="closeKeyboard" class="close" type="button" aria-label="Закрыть клавиатуру">×</button></div>
+    <p>Текст сразу вводится в активное поле на ноутбуке.</p>
+    <textarea id="keyboardText" class="keyboard-field" rows="4" maxlength="8192" placeholder="Начните печатать…" aria-label="Текст для ноутбука" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" inputmode="text"></textarea>
+    <p id="keyboardStatus" class="keyboard-status" role="status" aria-live="polite"></p>
+    <button id="keyboardDone" class="primary" type="button">Готово</button>
+  </dialog>
+  <dialog id="pairing" aria-labelledby="pairingTitle">
+    <form id="pairingForm">
+      <div class="dialog-heading"><h2 id="pairingTitle">Подключение</h2><button id="closePairing" class="close" type="button" aria-label="Закрыть">×</button></div>
+      <p>Введите код из окна Remote на ноутбуке.</p>
+      <label for="code">КОД ПОДКЛЮЧЕНИЯ</label>
+      <input id="code" name="code" type="text" minlength="12" maxlength="12" pattern="[0-9A-Fa-f]{12}" placeholder="A1B2C3D4E5F6" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+      <label class="remember-choice"><input id="remember" type="checkbox" checked> Запомнить устройство</label>
+      <label for="deviceName">ИМЯ УСТРОЙСТВА</label>
+      <input id="deviceName" type="text" value="Мой iPhone" maxlength="40" autocomplete="off" placeholder="Например, мой iPhone">
+      <p id="pairStatus" class="pair-status" role="status" aria-live="polite"></p>
+      <button id="pairSubmit" class="primary" type="submit">Подключиться</button>
+      <p class="dialog-note">При запоминании код нужен один раз. Следующие подключения — автоматически, пока приложение Windows включено. Устройства должны быть в одной доверенной сети.</p>
+    </form>
+  </dialog>
+  <noscript>Для работы тачпада включите JavaScript в Safari.</noscript>
+</body>
+</html>

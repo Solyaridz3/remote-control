@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "Remote — тачпад ноутбука",
+  "short_name": "Remote",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d121a",
+  "theme_color": "#0d121a",
+  "icons": [{"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+}

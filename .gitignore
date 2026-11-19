@@ -1,0 +1,18 @@
+dist/
+build/
+.DS_Store
+xcuserdata/
+*.xcuserstate
+
+# Machine-local credentials, trust profiles and private keys
+*.pfx
+*.p12
+*.pem
+*.key
+*.dpapi
+*.cer
+*.crt
+*.mobileconfig
+devices.json
+.env
+.env.*
