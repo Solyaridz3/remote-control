@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap desktop rescap">
+  <Identity Name="PocketPointer.TestPackage" Publisher="CN=PocketPointer Test Package" Version="1.0.0.0" ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>PocketPointer</DisplayName>
+    <PublisherDisplayName>PocketPointer Test Package</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22000.0" MaxVersionTested="10.0.22000.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="uk-UA" />
+    <Resource Language="ro-RO" />
+    <Resource Language="ru-RU" />
+  </Resources>
+  <Applications>
+    <Application Id="PocketPointer" Executable="RemoteController.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="PocketPointer" Description="PocketPointer" BackgroundColor="transparent"
+                          Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <desktop:Extension Category="windows.startupTask" Executable="RemoteController.Startup.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="RemoteStartup" Enabled="false" DisplayName="PocketPointer" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

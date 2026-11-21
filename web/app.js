@@ -1,10 +1,32 @@
 /* Local-only controller. All assets and commands stay on the laptop's LAN. */
 (() => {
   "use strict";
+  const t = window.RemoteTranslate || (text => text);
   const $ = id => document.getElementById(id);
   const pad = $("touchpad"), pairing = $("pairing"), code = $("code");
+  const controls = $('controlScreen'), openControls = $('openControls');
   const connectButton = $("connect"), disconnectButton = $("disconnect");
   const volumeButtons = [...document.querySelectorAll("[data-volume]")];
+  const themeKey = 'remote.theme';
+  const lightTheme = $('themeLight'), darkTheme = $('themeDark');
+
+  function applyTheme(theme) {
+    const light = theme === 'light';
+    document.documentElement.dataset.theme = light ? 'light' : 'dark';
+    $('themeColor').content = light ? '#e9eefa' : '#202c43';
+    lightTheme.checked = light;
+    darkTheme.checked = !light;
+  }
+
+  let savedTheme;
+  try { savedTheme = localStorage.getItem(themeKey); } catch (_) { }
+  applyTheme(savedTheme);
+  for (const option of [lightTheme, darkTheme]) option.addEventListener('change', () => {
+    if (!option.checked) return;
+    applyTheme(option.value);
+    try { localStorage.setItem(themeKey, option.value); } catch (_) { }
+  });
+
   const capturedPointers = new Set();
   const screenViewer = new RemoteScreen.Viewer({
     image: $('screenImage'), control: message => send(message),
@@ -16,11 +38,11 @@
       $('screenEnabled').checked = viewer.enabled;
       pad.classList.toggle('screen-active', viewer.running);
       $('screenStatus').hidden = !viewer.enabled && !viewer.message;
-      const status = viewer.message || (viewer.running ? (viewer.fps ? viewer.fps + ' кадр/с' : 'Трансляция · до 60 кадр/с') : 'Подключаем экран…');
+      const status = t(viewer.message) || (viewer.running ? (viewer.fps ? viewer.fps + t(' кадр/с') : t('Трансляция · до 60 кадр/с')) : t('Подключаем экран…'));
       if ($('screenStatus').textContent !== status) $('screenStatus').textContent = status;
     }
   });
-  function updateScreenVisibility() { screenViewer.setVisible(!$('touchScreen').hidden && !$('keyboardDialog').open && !document.hidden); }
+  function updateScreenVisibility() { screenViewer.setVisible(!controls.open && !$('keyboardDialog').open && !document.hidden); }
   $('screenEnabled').addEventListener('change', () => screenViewer.toggle($('screenEnabled').checked));
   // Handle a completed finger tap directly; Safari may omit the later click
   // after a multi-touch gesture. Keep native mouse/keyboard activation too.
@@ -69,9 +91,9 @@
     $('magnifierEnabled').checked = magnifierEnabled;
     $('magnifierRadiusValue').value = magnifierRadius + ' px';
     $('magnifierZoomValue').value = (magnifierZoom / 100).toFixed(1) + '×';
-    $('magnifierStatus').textContent = !ready ? 'Подключитесь к ноутбуку, чтобы включить лупу.'
-      : !magnifierSupported ? 'Обновите приложение на ноутбуке для поддержки лупы.'
-      : magnifierFlight ? 'Применяем…' : magnifierEnabled ? 'Лупа включена. При отключении телефона она выключится.' : 'Лупа выключена. Включить можно на главном экране. Настройки сохраняются.';
+    $('magnifierStatus').textContent = !ready ? t('Подключитесь к ноутбуку, чтобы включить лупу.')
+      : !magnifierSupported ? t('Обновите приложение на ноутбуке для поддержки лупы.')
+      : magnifierFlight ? t('Применяем…') : magnifierEnabled ? t('Лупа включена. При отключении телефона она выключится.') : t('Лупа выключена. Включить можно на главном экране. Настройки сохраняются.');
   }
   function pumpMagnifier() {
     if (!ready || !magnifierSupported || magnifierFlight) return;
@@ -80,7 +102,7 @@
     if (key === magnifierApplied || (!magnifierEnabled && !magnifierApplied)) return;
     magnifierFlight = key;
     if (!send(command)) return;
-    magnifierTimer = setTimeout(() => connectionFailed('Лупа не отвечает. Подключитесь снова.', false), 3500);
+    magnifierTimer = setTimeout(() => connectionFailed(t('Лупа не отвечает. Подключитесь снова.'), false), 3500);
     renderMagnifier();
   }
   $('magnifierEnabled').addEventListener('change', () => {
@@ -134,24 +156,22 @@
   $("smoothing").checked = smoothing;
 
   function render(message) {
-    $("status").textContent = message;
-    $("pairStatus").textContent = message;
+    $("status").textContent = t(message);
+    $("pairStatus").textContent = t(message);
     $("badge").classList.toggle("online", ready);
-    $("badgeText").textContent = ready ? "В сети" : connecting ? "Связь…" : "Офлайн";
-    $("touchConnection").textContent = ready ? 'Подключено' : connecting ? 'Подключение…' : 'Офлайн';
+    $("badgeText").textContent = ready ? t("В сети") : connecting ? t("Связь…") : t("Офлайн");
+    $("touchConnection").textContent = ready ? t('Подключено') : connecting ? t('Подключение…') : t('Офлайн');
     $("touchConnection").classList.toggle('online', ready);
     pad.classList.toggle("ready", ready);
-    $("padHint").textContent = ready ? "ДВИГАЙТЕ ПАЛЬЦЕМ" : "ВАШ ТАЧПАД";
-    $("padState").textContent = ready ? "ПОДКЛЮЧЕНО" : "WI-FI";
     connectButton.disabled = ready || connecting;
     disconnectButton.disabled = !ready && !connecting && !retryTimer;
     volumeButtons.forEach(button => { button.disabled = !ready; });
     $("pairSubmit").disabled = connecting;
-    $("pairSubmit").textContent = connecting ? "Подключение…" : "Подключиться";
+    $("pairSubmit").textContent = connecting ? t("Подключение…") : t("Подключиться");
     code.disabled = connecting;
     $("remember").disabled = connecting;
     $("deviceName").disabled = connecting;
-    $("connectLabel").textContent = ready ? 'Подключено' : remembered ? 'Подключить без кода' : 'Подключить ноутбук';
+    $("connectLabel").textContent = ready ? t('Подключено') : remembered ? t('Подключить без кода') : t('Подключить ноутбук');
     $("rememberedInfo").hidden = !remembered;
     renderKeyboard();
     renderMagnifier();
@@ -166,7 +186,7 @@
   function stopKeyboard(message) {
     clearTimeout(keyboardTimer); keyboardTimer = null;
     keyboardActive = false; keyboardClosing = false; keyboardComposing = false; textFlight = null;
-    if ($("keyboardDialog").open) $("keyboardStatus").textContent = message;
+    if ($("keyboardDialog").open) $("keyboardStatus").textContent = t(message);
     renderKeyboard();
   }
   function closeKeyboardNow() {
@@ -182,16 +202,16 @@
     if (desired !== field.value) field.value = desired;
     const edit = RemoteKeyboard.nextEdit(confirmedText, desired);
     if (!edit) {
-      $("keyboardStatus").textContent = desired ? 'Текст введён на ноутбуке.' : 'Начните печатать на клавиатуре iPhone.';
+      $("keyboardStatus").textContent = desired ? t('Текст введён на ноутбуке.') : t('Начните печатать на клавиатуре iPhone.');
       if (keyboardClosing) closeKeyboardNow();
       return;
     }
     const sequence = ++textSequence;
     textFlight = { seq: sequence, result: edit.result };
     if (!send({type:'text_edit', seq:sequence, deletions:edit.deletions, text:edit.text})) return;
-    $("keyboardStatus").textContent = 'Ввод на ноутбук…';
+    $("keyboardStatus").textContent = t('Ввод на ноутбук…');
     keyboardTimer = setTimeout(() => {
-      if (textFlight && textFlight.seq === sequence) connectionFailed('Нет подтверждения ввода. Проверьте соединение.');
+      if (textFlight && textFlight.seq === sequence) connectionFailed(t('Нет подтверждения ввода. Проверьте соединение.'));
     }, 3500);
   }
   function requestKeyboardClose() {
@@ -199,7 +219,7 @@
     keyboardComposing = false; keyboardClosing = true;
     $("keyboardText").blur(); renderKeyboard(); pumpKeyboard();
   }
-  function disconnect(message = "Отключено. Можно подключиться заново.") {
+  function disconnect(message = t("Отключено. Можно подключиться заново.")) {
     generation++;
     clearInterval(heartbeat); clearTimeout(handshakeTimeout);
     heartbeat = null; handshakeTimeout = null;
@@ -209,7 +229,7 @@
     screenViewer.setSupported(false);
     clearTimeout(magnifierTimer); magnifierTimer = null;
     magnifierSupported = false; magnifierEnabled = false; magnifierFlight = null; magnifierApplied = '';
-    stopKeyboard('Связь прервана. Закройте и откройте клавиатуру после подключения, чтобы начать новый ввод.');
+    stopKeyboard(t('Связь прервана. Закройте и откройте клавиатуру после подключения, чтобы начать новый ввод.'));
     keyboardSupported = false; textSequence = 0; confirmedText = '';
     if (previous) {
       previous.onopen = previous.onmessage = previous.onerror = previous.onclose = null;
@@ -222,9 +242,9 @@
   }
   function send(message, handshake = false) {
     if ((!ready && !handshake) || !socket || socket.readyState !== WebSocket.OPEN) return false;
-    if (socket.bufferedAmount > 16384) { connectionFailed("Сеть перегружена. Повторное подключение при восстановлении связи."); return false; }
+    if (socket.bufferedAmount > 16384) { connectionFailed(t("Сеть перегружена. Повторное подключение при восстановлении связи.")); return false; }
     try { socket.send(JSON.stringify(message)); return true; }
-    catch (_) { connectionFailed("Не удалось отправить команду. Проверяю связь…"); return false; }
+    catch (_) { connectionFailed(t("Не удалось отправить команду. Проверяю связь…")); return false; }
   }
   function removeRemembered() {
     remembered = null;
@@ -263,11 +283,14 @@
       if (!ready || !dragSupported) return;
       flush(); send({ type: 'drag', phase });
     },
-    dragLock(waiting) { $('padState').textContent = waiting ? 'ПЕРЕСТАВЬТЕ ПАЛЕЦ' : ready ? 'ПОДКЛЮЧЕНО' : 'WI-FI'; },
+    dragLock(waiting) {
+      $('padState').textContent = waiting ? t('ПЕРЕСТАВЬТЕ ПАЛЕЦ') : '';
+      $('padState').hidden = !waiting;
+    },
     pinch(phase, scale) {
       if (!ready) return;
       if (!pinchSupported) {
-        if (phase === 'start') render('Эта версия Windows не поддерживает виртуальный precision-тачпад.');
+        if (phase === 'start') render(t('Эта версия Windows не поддерживает виртуальный precision-тачпад.'));
         return;
       }
       if (phase === 'start') {
@@ -299,26 +322,26 @@
   function connect(saved = false) {
     if (saved && !remembered) return;
     const pairingCode = code.value.trim().toUpperCase();
-    if (!saved && !/^[0-9A-F]{12}$/.test(pairingCode)) { $("pairStatus").textContent = "Введите 12 символов кода: 0–9, A–F."; return; }
+    if (!saved && !/^[0-9A-F]{12}$/.test(pairingCode)) { $("pairStatus").textContent = t("Введите 12 символов кода: 0–9, A–F."); return; }
     disconnect("");
     const hello = saved ? { type: 'hello', version: 1, deviceId: remembered.deviceId, token: remembered.token }
       : { type: 'hello', version: 1, code: pairingCode };
-    if (!saved && $("remember").checked) { hello.remember = true; hello.deviceName = $("deviceName").value.trim() || 'Мой iPhone'; }
+    if (!saved && $("remember").checked) { hello.remember = true; hello.deviceName = $("deviceName").value.trim() || t('Мой iPhone'); }
     connecting = true;
-    render("Подключение к ноутбуку…");
+    render(t("Подключение к ноутбуку…"));
     const current = generation;
     try { socket = new WebSocket(`${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/ws`); }
-    catch (_) { disconnect("Не удалось открыть соединение. Откройте адрес из окна Remote."); return; }
+    catch (_) { disconnect(t("Не удалось открыть соединение. Откройте адрес из окна PocketPointer.")); return; }
     socket.onopen = () => { if (current === generation) send(hello, true); };
     socket.onmessage = event => {
       if (current !== generation) return;
       let message;
       try { if (typeof event.data !== "string" || event.data.length > 1024) throw new Error(); message = JSON.parse(event.data); }
-      catch (_) { disconnect("Некорректный ответ ноутбука."); return; }
+      catch (_) { disconnect(t("Некорректный ответ ноутбука.")); return; }
       if (message?.type === "error") {
         if (message.code === 'invalid_device') removeRemembered();
         if (message.code === 'disconnected') userStopped = true;
-        connectionFailed(typeof message.message === "string" ? message.message : "Подключение отклонено.",
+        connectionFailed(typeof message.message === "string" ? message.message : t("Подключение отклонено."),
           saved && ['busy', 'rate_limited'].includes(message.code), message.code === 'rate_limited' ? 30000 : 15000);
         return;
       }
@@ -340,39 +363,39 @@
         $("computer").textContent = typeof message.name === "string" ? message.name : "Windows 11";
         code.value = "";
         pairing.close();
-        render(storageFailed ? 'Подключено, но браузер не сохранил ключ. После закрытия страницы понадобится код.'
-          : remembered ? 'Подключено. Телефон запомнен — следующий раз без кода.' : "Подключено. Ноутбук готов к управлению.");
+        render(storageFailed ? t('Подключено, но браузер не сохранил ключ. После закрытия страницы понадобится код.')
+          : remembered ? t('Подключено. Телефон запомнен — следующий раз без кода.') : t("Подключено. Ноутбук готов к управлению."));
         heartbeat = setInterval(() => {
-          if (Date.now() - lastReply > 7000) connectionFailed("Связь потеряна. Ожидаю ноутбук…");
+          if (Date.now() - lastReply > 7000) connectionFailed(t("Связь потеряна. Ожидаю ноутбук…"));
           else send({ type: "ping" });
         }, 2000);
       } else if (['screen_ready', 'screen_stopped'].includes(message?.type) && ready) {
         screenViewer.accept(message);
       } else if (message?.type === 'magnifier_state' && ready && magnifierFlight) {
-        if (message.enabled !== JSON.parse(magnifierFlight).enabled) { connectionFailed('Некорректное подтверждение лупы.', false); return; }
+        if (message.enabled !== JSON.parse(magnifierFlight).enabled) { connectionFailed(t('Некорректное подтверждение лупы.'), false); return; }
         clearTimeout(magnifierTimer); magnifierTimer = null;
         magnifierApplied = magnifierFlight; magnifierFlight = null;
         pumpMagnifier(); renderMagnifier();
       } else if (message?.type === 'notice' && ready && message.feature === 'magnifier') {
         clearTimeout(magnifierTimer); magnifierTimer = null;
         magnifierEnabled = false; magnifierFlight = null; magnifierApplied = '';
-        renderMagnifier(); $('magnifierStatus').textContent = message.message || 'Лупа недоступна.';
+        renderMagnifier(); $('magnifierStatus').textContent = t(message.message) || t('Лупа недоступна.');
       } else if (message?.type === 'text_ack' && ready) {
-        if (!textFlight || message.seq !== textFlight.seq) { connectionFailed('Некорректное подтверждение ввода.', false); return; }
+        if (!textFlight || message.seq !== textFlight.seq) { connectionFailed(t('Некорректное подтверждение ввода.'), false); return; }
         clearTimeout(keyboardTimer); keyboardTimer = null;
         confirmedText = textFlight.result; textFlight = null;
         pumpKeyboard(); renderKeyboard();
       } else if (message?.type === 'notice' && ready && message.feature === 'keyboard') {
-        stopKeyboard(typeof message.message === 'string' ? message.message : 'Ввод остановлен. Откройте клавиатуру заново.');
+        stopKeyboard(typeof message.message === 'string' ? message.message : t('Ввод остановлен. Откройте клавиатуру заново.'));
       } else if (message?.type === 'notice' && ready && message.feature === 'pinch') {
         pinching = false; pinchScale = null; gestures.cancel();
-        render(typeof message.message === 'string' ? message.message : 'Не удалось выполнить жест растягивания.');
+        render(typeof message.message === 'string' ? message.message : t('Не удалось выполнить жест растягивания.'));
       } else if (message?.type === "pong" && ready) lastReply = Date.now();
-      else disconnect("Неожиданный ответ ноутбука.");
+      else disconnect(t("Неожиданный ответ ноутбука."));
     };
-    socket.onerror = () => { if (current === generation) connectionFailed("Нет связи. Проверьте Wi-Fi, приём и брандмауэр Windows.", saved || !!remembered); };
-    socket.onclose = () => { if (current === generation) connectionFailed("Ноутбук отключился. Ожидаю подключения…", saved || !!remembered); };
-    handshakeTimeout = setTimeout(() => { if (current === generation) connectionFailed("Нет ответа от ноутбука. Проверьте Wi-Fi и брандмауэр.", saved); }, 8000);
+    socket.onerror = () => { if (current === generation) connectionFailed(t("Нет связи. Проверьте Wi-Fi, приём и брандмауэр Windows."), saved || !!remembered); };
+    socket.onclose = () => { if (current === generation) connectionFailed(t("Ноутбук отключился. Ожидаю подключения…"), saved || !!remembered); };
+    handshakeTimeout = setTimeout(() => { if (current === generation) connectionFailed(t("Нет ответа от ноутбука. Проверьте Wi-Fi и брандмауэр."), saved); }, 8000);
   }
 
   function touchPoint(event) {
@@ -382,7 +405,7 @@
     $("touchDot").hidden = false;
   }
   pad.addEventListener("pointerdown", event => {
-    if (!ready || $("touchScreen").hidden || (event.pointerType === "mouse" && event.button !== 0)) return;
+    if (!ready || controls.open || $('keyboardDialog').open || pairing.open || (event.pointerType === 'mouse' && event.button !== 0)) return;
     event.preventDefault();
     try { pad.setPointerCapture(event.pointerId); capturedPointers.add(event.pointerId); } catch (_) { }
     gestures.start(event.pointerId, event.clientX, event.clientY, event.timeStamp);
@@ -418,7 +441,7 @@
     cancelGesture();
     keyboardActive = true; keyboardClosing = false; keyboardComposing = false; confirmedText = '';
     $("keyboardText").value = '';
-    $("keyboardStatus").textContent = 'Начните печатать на клавиатуре iPhone.';
+    $("keyboardStatus").textContent = t('Начните печатать на клавиатуре iPhone.');
     renderKeyboard(); $("keyboardDialog").showModal();
     updateScreenVisibility();
     // Keep focus synchronous with the tap so iOS opens its standard keyboard.
@@ -430,17 +453,43 @@
   activateButton($("closeKeyboard"), requestKeyboardClose);
   activateButton($("keyboardDone"), requestKeyboardClose);
   $("keyboardDialog").addEventListener('cancel', event => { event.preventDefault(); requestKeyboardClose(); });
-  function showControls(show) {
+  activateButton(openControls, () => {
+    if (controls.open) return;
     cancelGesture();
     updateViewport();
-    $("touchScreen").hidden = show;
-    $("controlScreen").hidden = !show;
+    controls.showModal();
+    $('controlBody').scrollTop = 0;
     updateScreenVisibility();
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    $(show ? 'backToTouchpad' : 'openControls').focus({ preventScroll: true });
-  }
-  activateButton($("openControls"), () => showControls(true));
-  activateButton($("backToTouchpad"), () => showControls(false));
+  });
+  activateButton($('backToTouchpad'), () => controls.close());
+  controls.addEventListener('close', () => {
+    if (controls.open) return;
+    updateScreenVisibility();
+    openControls.focus({ preventScroll: true });
+  });
+  let pressedBackdrop = false;
+  controls.addEventListener('pointerdown', event => { pressedBackdrop = event.target === controls; });
+  controls.addEventListener('click', event => {
+    if (pressedBackdrop && event.target === controls) controls.close();
+    pressedBackdrop = false;
+  });
+  const handle = $('controlHandle');
+  let sheetSwipe = null;
+  handle.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0) return;
+    handle.setPointerCapture(event.pointerId);
+    sheetSwipe = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  });
+  handle.addEventListener('pointerup', event => {
+    if (!sheetSwipe || sheetSwipe.id !== event.pointerId) return;
+    const distance = event.clientY - sheetSwipe.y;
+    const horizontal = Math.abs(event.clientX - sheetSwipe.x);
+    sheetSwipe = null;
+    if (distance >= 45 && distance > horizontal) controls.close();
+  });
+  handle.addEventListener('lostpointercapture', event => {
+    if (sheetSwipe && sheetSwipe.id === event.pointerId) sheetSwipe = null;
+  });
   pad.addEventListener("pointercancel", cancelGesture);
   pad.addEventListener("lostpointercapture", event => { if (gestures.points.has(event.pointerId)) cancelGesture(); });
   pad.addEventListener("contextmenu", event => { event.preventDefault(); });
@@ -467,19 +516,17 @@
     try { localStorage.setItem('remote.smoothing', smoothing ? 'on' : 'off'); } catch (_) { }
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) disconnect("Страница свёрнута. При возвращении сохранённый телефон подключится автоматически.");
+    if (document.hidden) disconnect(t("Страница свёрнута. При возвращении сохранённый телефон подключится автоматически."));
     else { updateViewport(); connectSaved(); }
   });
   window.addEventListener("pagehide", () => { disconnect(); });
-  window.addEventListener("offline", () => { disconnect("Сеть недоступна. Проверьте Wi-Fi."); });
+  window.addEventListener("offline", () => { disconnect(t("Сеть недоступна. Проверьте Wi-Fi.")); });
   window.addEventListener("online", connectSaved);
   window.addEventListener("pageshow", () => { updateViewport(); connectSaved(); });
   window.addEventListener('resize', updateViewport);
   window.addEventListener('orientationchange', updateViewport);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', updateViewport);
   updateViewport();
-  $("touchScreen").hidden = false;
-  $("controlScreen").hidden = true;
-  render("Откройте Remote на ноутбуке и подключитесь по коду.");
+  render(t("Откройте PocketPointer на ноутбуке и подключитесь по коду."));
   connectSaved();
 })();

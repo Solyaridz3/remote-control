@@ -15,7 +15,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 20) {
                         HStack {
                             VStack(alignment: .leading, spacing: 5) {
-                                Text("Remote").font(.system(size: 27, weight: .semibold))
+                                Text("PocketPointer").font(.system(size: 27, weight: .semibold))
                                 Text(client.connected ? client.computer : "iPhone → Windows")
                                     .font(.subheadline).foregroundStyle(.secondary)
                             }
@@ -87,7 +87,7 @@ struct ContentView: View {
                         .textInputAutocapitalization(.characters).autocorrectionDisabled()
                         .font(.system(.body, design: .monospaced))
                 } header: { Text("Ноутбук") } footer: {
-                    Text("Откройте RemoteController.exe на ноутбуке. Оба устройства должны быть в одной Wi-Fi сети. Разрешите приложению доступ к локальной сети.")
+                    Text("Откройте PocketPointer на ноутбуке. Оба устройства должны быть в одной Wi-Fi сети. Разрешите приложению доступ к локальной сети.")
                 }
                 .disabled(client.connecting)
                 Section {
@@ -104,7 +104,7 @@ struct ContentView: View {
                 }
                 Section {
                     Text("Касание одним пальцем — левый клик. Касание двумя — правый клик. Движение двумя пальцами — прокрутка.")
-                    Text("Перед первым подключением установите сертификат Remote по инструкции в Windows. Соединение защищено TLS. При сворачивании приложение отключается.")
+                    Text("Перед первым подключением установите сертификат PocketPointer по инструкции в Windows. Соединение защищено TLS. При сворачивании приложение отключается.")
                 }.font(.footnote).foregroundStyle(.secondary)
             }
             .navigationTitle("Подключение")

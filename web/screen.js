@@ -1,5 +1,6 @@
 (function (root) {
   'use strict';
+  const t = root.RemoteTranslate || (text => text);
   class FrameRate {
     constructor() { this.fps = 60; this.quality = 80; this.average = 0; this.slow = 0; this.fast = 0; }
     record(milliseconds, bytes) {
@@ -56,14 +57,14 @@
       this.pending = true; this.rate = new FrameRate(); this.sequence = 0; this.requestId++;
       this.windowStarted = this.now(); this.windowFrames = 0;
       const generation = this.generation;
-      this.timeout = this.schedule(() => { if (generation === this.generation) this.fail('Нет ответа трансляции. Попробуйте включить её снова.'); }, 6000);
+      this.timeout = this.schedule(() => { if (generation === this.generation) this.fail(t('Нет ответа трансляции. Попробуйте включить её снова.')); }, 6000);
       if (!this.options.control({ type: 'screen_start', id: this.requestId })) this.disable(false);
       this.changed();
     }
     accept(message) {
       if (message.type === 'screen_stopped') return;
       if (message.type !== 'screen_ready' || !this.pending || message.id !== this.requestId) return;
-      if (!/^[0-9A-F]{64}$/.test(message.ticket)) { this.fail('Некорректный ответ трансляции.'); return; }
+      if (!/^[0-9A-F]{64}$/.test(message.ticket)) { this.fail(t('Некорректный ответ трансляции.')); return; }
       this.pending = false;
       const generation = this.generation;
       const current = () => generation === this.generation && this.enabled && this.visible;
@@ -73,12 +74,12 @@
         socket.onmessage = event => {
           if (!current()) return;
           if (typeof event.data === 'string') {
-            let reply; try { if (event.data.length > 1024) throw new Error(); reply = JSON.parse(event.data); } catch (_) { this.fail('Некорректный ответ трансляции.'); return; }
+            let reply; try { if (event.data.length > 1024) throw new Error(); reply = JSON.parse(event.data); } catch (_) { this.fail(t('Некорректный ответ трансляции.')); return; }
             if (reply.type === 'screen_connected' && !this.connected) { this.connected = true; this.cancel(this.timeout); this.next(); }
-            else this.fail(reply.message || 'Трансляция остановлена. Включите её снова.');
+            else this.fail(reply.message || t('Трансляция остановлена. Включите её снова.'));
             return;
           }
-          if (!this.isFrame(event.data) || event.data.size < 1 || event.data.size > 2097152 || !this.inFlight || this.decoding) { this.fail('Некорректный кадр трансляции.'); return; }
+          if (!this.isFrame(event.data) || event.data.size < 1 || event.data.size > 2097152 || !this.inFlight || this.decoding) { this.fail(t('Некорректный кадр трансляции.')); return; }
           this.decoding = true;
           const previous = this.objectUrl;
           const url = this.urls.createObjectURL(event.data); this.urlsInUse.add(url); this.objectUrl = url;
@@ -94,11 +95,11 @@
             this.changed();
             this.timer = this.schedule(() => { if (current()) this.next(); }, Math.max(0, 1000 / this.rate.fps - elapsed));
           };
-          this.image.onerror = () => { if (current()) this.fail('Не удалось показать кадр экрана.'); };
+          this.image.onerror = () => { if (current()) this.fail(t('Не удалось показать кадр экрана.')); };
           this.image.src = url;
         };
-        socket.onerror = socket.onclose = () => { if (current()) this.fail('Трансляция прервалась. Тачпад продолжает работать.'); };
-      } catch (_) { this.fail('Не удалось открыть трансляцию.'); }
+        socket.onerror = socket.onclose = () => { if (current()) this.fail(t('Трансляция прервалась. Тачпад продолжает работать.')); };
+      } catch (_) { this.fail(t('Не удалось открыть трансляцию.')); }
     }
     next() {
       if (!this.socket || this.socket.readyState !== 1 || !this.enabled || !this.visible || this.inFlight) return;
@@ -107,8 +108,8 @@
       const scale = Math.min(1, 960 / width, 1280 / height);
       const request = { type: 'screen_next', seq: ++this.sequence, width: Math.max(160, Math.round(width * scale)), height: Math.max(120, Math.round(height * scale)), quality: this.rate.quality, fps: this.rate.fps };
       this.inFlight = true; this.frameStarted = this.now();
-      this.timeout = this.schedule(() => this.fail('Кадры не поступают. Включите трансляцию снова.'), 5000);
-      try { this.socket.send(JSON.stringify(request)); } catch (_) { this.fail('Не удалось запросить кадр.'); }
+      this.timeout = this.schedule(() => this.fail(t('Кадры не поступают. Включите трансляцию снова.')), 5000);
+      try { this.socket.send(JSON.stringify(request)); } catch (_) { this.fail(t('Не удалось запросить кадр.')); }
     }
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = { FrameRate, Viewer };

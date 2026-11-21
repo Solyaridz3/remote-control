@@ -61,10 +61,11 @@ internal static class WebTests
         public void Dispose() { socket.Abort(); socket.Dispose(); }
     }
 
-    private static string Fetch(RemoteServer server, string path)
+    private static string Fetch(RemoteServer server, string path, string language = null)
     {
         var request = (HttpWebRequest)WebRequest.Create(Url(server) + path);
         request.Proxy = null; request.KeepAlive = false; request.Timeout = 3000;
+        if (language != null) request.Headers[HttpRequestHeader.AcceptLanguage] = language;
         using (var response = (HttpWebResponse)request.GetResponse())
         using (var reader = new StreamReader(response.GetResponseStream()))
         {
@@ -79,14 +80,46 @@ internal static class WebTests
         Test("Embedded page and all local assets served without authentication", () => {
             using (var server = new RemoteServer(new FakeInput())) {
                 server.Start(0);
-                Check(Fetch(server, "/").Contains("id=\"touchpad\""), "Missing pad");
-                Check(Fetch(server, "/app.css").Contains("touch-action:none"), "Missing gesture CSS");
+                string page = Fetch(server, "/");
+                Check(page.Contains("id=\"touchpad\""), "Missing pad");
+                Check(page.Contains("name=\"apple-mobile-web-app-title\" content=\"PocketPointer\""), "Wrong iPhone Home Screen name");
+                Check(page.Contains("rel=\"apple-touch-icon\" href=\"/apple-touch-icon-v2.png\""), "Missing iPhone Home Screen icon");
+                Check(Fetch(server, "/app.css").Contains("touch-action: none"), "Missing gesture CSS");
                 Check(Fetch(server, "/app.js").Contains("new WebSocket"), "Missing controller");
                 Check(Fetch(server, "/viewport.js").Contains("appHeight"), "Missing viewport helper");
                 Check(Fetch(server, "/keyboard.js").Contains("nextEdit"), "Missing keyboard helper");
                 Check(Fetch(server, "/gestures.js").Contains("GestureTracker"), "Missing gestures");
-                Check(Fetch(server, "/manifest.webmanifest").Contains("standalone"), "Missing manifest");
+                string manifest = Fetch(server, "/manifest.webmanifest");
+                Check(manifest.Contains("standalone") && manifest.Contains("/remote-icon-v2.png"), "Missing manifest icon or display mode");
+                var manifestFields = new System.Web.Script.Serialization.JavaScriptSerializer()
+                    .Deserialize<System.Collections.Generic.Dictionary<string, object>>(manifest);
+                Check((string)manifestFields["short_name"] == "PocketPointer", "Wrong manifest name");
                 Check(Fetch(server, "/icon.svg").Contains("<svg"), "Missing icon");
+                using (var web = new WebClient { Proxy = null })
+                {
+                    foreach (var icon in new[] { Tuple.Create("/apple-touch-icon-v2.png", 180), Tuple.Create("/remote-icon-v2.png", 512) })
+                    {
+                        byte[] png = web.DownloadData(Url(server) + icon.Item1);
+                        Check(web.ResponseHeaders["Content-Type"] == "image/png", "Incorrect icon content type: " + icon.Item1);
+                        using (var data = new MemoryStream(png))
+                        using (var bitmap = new System.Drawing.Bitmap(data))
+                            Check(bitmap.Width == icon.Item2 && bitmap.Height == icon.Item2, "Incorrect icon size: " + icon.Item1);
+                    }
+                }
+            }
+        });
+        Test("Mobile UI and manifest use the requested supported language", () => {
+            using (var server = new RemoteServer(new FakeInput())) {
+                server.Start(0);
+                string romanian = "en-US, uk-UA;q=0.4, ro-RO;q=0.8";
+                string page = Fetch(server, "/", romanian);
+                Check(page.Contains("lang=\"ro\"") && page.Contains("Tastatură"), "Romanian mobile UI missing");
+                page = Fetch(server, "/", "ro;q=0, uk-UA;q=0.5");
+                Check(page.Contains("lang=\"uk\"") && page.Contains("Клавіатура"), "Ukrainian mobile UI missing");
+                var manifest = new System.Web.Script.Serialization.JavaScriptSerializer()
+                    .Deserialize<System.Collections.Generic.Dictionary<string, object>>(Fetch(server, "/manifest.webmanifest", romanian));
+                Check((string)manifest["lang"] == "ro" && (string)manifest["id"] == "/", "Localization changed PWA identity");
+                Check(Fetch(server, "/locale.js", romanian).Contains("RemoteTranslate"), "Browser runtime localization missing");
             }
         });
         Test("Unlisted HTTP paths return 404 and cannot read source files", () => {

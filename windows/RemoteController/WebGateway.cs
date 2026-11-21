@@ -9,6 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Web.Script.Serialization;
 
 namespace RemoteController
 {
@@ -22,7 +23,13 @@ namespace RemoteController
     {
         public readonly Func<X509Certificate2> Certificate;
         public readonly Func<string, string, SetupResponse> Setup;
-        public TransportSecurity(Func<X509Certificate2> certificate, Func<string, string, SetupResponse> setup = null) { if (certificate == null) throw new ArgumentNullException("certificate"); Certificate = certificate; Setup = setup; }
+        public readonly Func<TcpClient, bool> AllowConnection;
+        public TransportSecurity(Func<X509Certificate2> certificate, Func<string, string, SetupResponse> setup = null, Func<TcpClient, bool> allowConnection = null) {
+            if (certificate == null) throw new ArgumentNullException("certificate");
+            Certificate = certificate;
+            Setup = setup;
+            AllowConnection = allowConnection;
+        }
     }
     // Small bounded HTTP/WebSocket gateway. No HTTP.sys URL reservation, admin
     // rights, external web server, filesystem routes or Internet requests.
@@ -30,6 +37,7 @@ namespace RemoteController
     {
         public static Stream Open(TcpClient client, TransportSecurity security = null)
         {
+            if (security != null && security.AllowConnection != null && !security.AllowConnection(client)) return null;
             Stream stream = client.GetStream();
             int first = stream.ReadByte();
             bool encrypted = false;
@@ -72,12 +80,19 @@ namespace RemoteController
                 address.Query.Length != 0 || address.Fragment.Length != 0 || address.Port != ((IPEndPoint)client.Client.LocalEndPoint).Port ||
                 !ip.Equals(((IPEndPoint)client.Client.LocalEndPoint).Address))
             { Reply(stream, "403 Forbidden", "text/plain", Encoding.UTF8.GetBytes("Open the numeric IP address shown on the laptop.")); return null; }
+            string preferences;
+            headers.TryGetValue("Accept-Language", out preferences);
+            string language = UiText.Language(preferences);
             if (security != null && security.Setup != null && (!encrypted || (start[1] != "/" && start[1] != "/index.html"))) {
                 var setup = security.Setup(start[1], "https://" + host);
-                if (setup != null) { Reply(stream, "200 OK", setup.ContentType, setup.Body); return null; }
+                if (setup != null) {
+                    byte[] body = setup.ContentType.StartsWith("text/html", StringComparison.Ordinal) || start[1] == "/remote.mobileconfig"
+                        ? Encoding.UTF8.GetBytes(UiText.Html(Encoding.UTF8.GetString(setup.Body), language)) : setup.Body;
+                    Reply(stream, "200 OK", setup.ContentType, body); return null;
+                }
             }
             if (security != null && !encrypted) {
-                Reply(stream, "426 Upgrade Required", "text/plain; charset=utf-8", Encoding.UTF8.GetBytes("Откройте https://" + host + "/. Незашифрованное управление отключено.")); return null;
+                Reply(stream, "426 Upgrade Required", "text/plain; charset=utf-8", Encoding.UTF8.GetBytes(string.Format(UiText.Translate("Откройте {0}. Незашифрованное управление отключено.", language), "https://" + host + "/"))); return null;
             }
             if (start[1] == "/ws")
             {
@@ -99,6 +114,7 @@ namespace RemoteController
             string file, contentType;
             switch (start[1])
             {
+                case "/locale.js": Reply(stream, "200 OK", "text/javascript; charset=utf-8", Encoding.UTF8.GetBytes(UiText.BrowserScript())); return null;
                 case "/": case "/index.html": file = "index.html"; contentType = "text/html; charset=utf-8"; break;
                 case "/app.css": file = "app.css"; contentType = "text/css; charset=utf-8"; break;
                 case "/app.js": file = "app.js"; contentType = "text/javascript; charset=utf-8"; break;
@@ -107,6 +123,8 @@ namespace RemoteController
                 case "/gestures.js": file = "gestures.js"; contentType = "text/javascript; charset=utf-8"; break;
                 case "/screen.js": file = "screen.js"; contentType = "text/javascript; charset=utf-8"; break;
                 case "/manifest.webmanifest": file = "manifest.webmanifest"; contentType = "application/manifest+json"; break;
+                case "/apple-touch-icon-v2.png": file = "apple-touch-icon-v2.png"; contentType = "image/png"; break;
+                case "/remote-icon-v2.png": file = "remote-icon-v2.png"; contentType = "image/png"; break;
                 case "/icon.svg": case "/favicon.ico": file = "icon.svg"; contentType = "image/svg+xml"; break;
                 default: Reply(stream, "404 Not Found", "text/plain", Encoding.UTF8.GetBytes("Not found")); return null;
             }
@@ -116,7 +134,16 @@ namespace RemoteController
                 using (var data = new MemoryStream())
                 {
                     resource.CopyTo(data);
-                    Reply(stream, "200 OK", contentType, data.ToArray());
+                    byte[] body = data.ToArray();
+                    if (file == "index.html") body = Encoding.UTF8.GetBytes(UiText.Html(Encoding.UTF8.GetString(body), language));
+                    if (file == "manifest.webmanifest") {
+                        var json = new JavaScriptSerializer();
+                        var manifest = json.Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetString(body));
+                        manifest["lang"] = language;
+                        manifest["name"] = UiText.Translate((string)manifest["name"], language);
+                        body = Encoding.UTF8.GetBytes(json.Serialize(manifest));
+                    }
+                    Reply(stream, "200 OK", contentType, body);
                 }
             }
             return null;

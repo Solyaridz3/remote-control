@@ -15,7 +15,7 @@ function setup(options = {}) {
     const node = { value:'',disabled:false,hidden:false,style:{},dataset:{},classList:{toggle(){}},textContent:'',open:false,
       removeAttribute(name){delete this[name]},addEventListener(type,fn){(events[type]??=[]).push(fn)},
       fire(type,data={}){for(const fn of events[type]??[]) fn({preventDefault(){},...data})},
-      captures:new Set(),showModal(){this.open=true},close(){this.open=false},focus(){this.focused=true},blur(){this.focused=false},setPointerCapture(id){this.captures.add(id)},hasPointerCapture(id){return this.captures.has(id)},releasePointerCapture(id){this.captures.delete(id)},getBoundingClientRect(){return{left:0,top:0,right:400,bottom:500,width:400,height:500}} };
+      captures:new Set(),showModal(){this.open=true},close(){if(this.open){this.open=false;this.fire('close')}},focus(){this.focused=true},blur(){this.focused=false},setPointerCapture(id){this.captures.add(id)},hasPointerCapture(id){return this.captures.has(id)},releasePointerCapture(id){this.captures.delete(id)},getBoundingClientRect(){return{left:0,top:0,right:400,bottom:500,width:400,height:500}} };
     nodes.set(id,node); return node;
   }
   const buttons = ['down','mute','up'].map(action=>{const node=element(action);node.dataset.volume=action;return node});
@@ -28,7 +28,8 @@ function setup(options = {}) {
     message(message){this.onmessage?.({data:JSON.stringify(message)})}
   }
   const cssProperties=new Map();
-  const document={hidden:false,documentElement:{style:{setProperty:(name,value)=>cssProperties.set(name,value)}},getElementById:element,querySelectorAll:()=>buttons,addEventListener(type,fn){listeners[type]=fn}};
+  const document={hidden:false,documentElement:{dataset:{},style:{setProperty:(name,value)=>cssProperties.set(name,value)}},getElementById:element,querySelectorAll:()=>buttons,addEventListener(type,fn){listeners[type]=fn}};
+  element('themeLight').value='light';element('themeDark').value='dark';
   const window={innerHeight:options.innerHeight??844,screen:{width:390,height:844},orientation:0,addEventListener(type,fn){listeners[type]=fn},scrollTo(){}};
   const context=vm.createContext({document,window,RemoteViewport,RemoteKeyboard,RemoteScreen,navigator:{standalone:options.standalone===true,onLine:true},location:{protocol:options.protocol||'http:',host:'192.168.1.20:49732'},WebSocket:FakeSocket,
     RemoteGestures:{GestureTracker,MotionFilter},localStorage:{getItem:key=>storage.get(key)??null,setItem(key,value){if(options.failStorage)throw new Error('Storage unavailable');storage.set(key,value)},removeItem:key=>storage.delete(key)},requestAnimationFrame(fn){context.frame=fn},
@@ -42,6 +43,27 @@ function setup(options = {}) {
 }
 test('invalid pairing code cannot open a network connection',()=>{
   const s=setup();s.element('code').value='123';s.element('pairingForm').fire('submit');assert.equal(s.sockets.length,0);
+});
+test('theme switches locally without interrupting pairing and is restored on reopen',()=>{
+  const s=setup(),socket=s.pair();
+  assert.equal(s.document.documentElement.dataset.theme,'dark');
+  s.element('openControls').fire('click');
+  s.element('themeLight').checked=true;s.element('themeLight').fire('change');
+  assert.equal(s.document.documentElement.dataset.theme,'light');
+  assert.equal(s.element('themeColor').content,'#e9eefa');
+  assert.equal(socket.readyState,1);
+  assert.equal(s.storage.get('remote.theme'),'light');
+  const reopened=setup({storage:s.storage});
+  assert.equal(reopened.element('themeLight').checked,true);
+  reopened.element('themeDark').checked=true;reopened.element('themeDark').fire('change');
+  assert.equal(reopened.document.documentElement.dataset.theme,'dark');
+  assert.equal(reopened.storage.get('remote.theme'),'dark');
+});
+test('appearance still changes when Safari blocks saving it',()=>{
+  const s=setup({failStorage:true});
+  s.element('themeLight').checked=true;s.element('themeLight').fire('change');
+  assert.equal(s.document.documentElement.dataset.theme,'light');
+  assert.equal(s.storage.has('remote.theme'),false);
 });
 test('handshake uses same laptop host, gates controls and clears code after ready',()=>{
   const s=setup();const socket=s.begin();assert.equal(socket.url,'ws://192.168.1.20:49732/ws');
@@ -193,22 +215,38 @@ test('smoothing can be disabled and its preference survives a page reopen',()=>{
   assert.deepEqual(socket.sent.at(-1),{type:'move',dx:30,dy:0});
   assert.equal(setup({storage:s.storage}).element('smoothing').checked,false);
 });
-test('control center and back preserve the authenticated connection',()=>{
+test('control sheet leaves the touchpad visible and preserves the authenticated connection',()=>{
   const s=setup(),socket=s.pair();
-  assert.equal(s.element('touchScreen').hidden,false);assert.equal(s.element('controlScreen').hidden,true);
+  assert.equal(s.element('touchScreen').hidden,false);assert.equal(s.element('controlScreen').open,false);
   s.element('openControls').fire('click');
-  assert.equal(s.element('touchScreen').hidden,true);assert.equal(s.element('controlScreen').hidden,false);
+  assert.equal(s.element('touchScreen').hidden,false);assert.equal(s.element('controlScreen').open,true);
   s.element('up').fire('click');assert.deepEqual(socket.sent.at(-1),{type:'volume',action:'up'});
   s.element('backToTouchpad').fire('click');
-  assert.equal(s.element('touchScreen').hidden,false);assert.equal(s.element('controlScreen').hidden,true);
+  assert.equal(s.element('touchScreen').hidden,false);assert.equal(s.element('controlScreen').open,false);
+  assert.equal(s.element('openControls').focused,true);
   assert.equal(socket.readyState,1);assert.equal(s.sockets.length,1);
 });
-test('opening control center ends a pinch and blocks hidden touchpad input',()=>{
+test('opening the control sheet ends a pinch and blocks touchpad input behind it',()=>{
   const s=setup(),socket=s.pair();startPinch(s);s.element('openControls').fire('click');
   assert.deepEqual(socket.sent.at(-1),{type:'pinch',phase:'end'});
   const sent=socket.sent.length;s.element('touchpad').fire('pointerdown',{pointerId:7,clientX:0,clientY:0,timeStamp:50,pointerType:'touch'});
   s.element('touchpad').fire('pointermove',{pointerId:7,clientX:50,clientY:50,timeStamp:100});s.context.frame(100);
   assert.equal(socket.sent.length,sent);
+});
+test('the sheet closes from its backdrop or handle without closing when a slider crosses the edge',()=>{
+  const s=setup(),screen=s.element('controlScreen'),handle=s.element('controlHandle');
+  s.element('openControls').fire('click');
+  screen.fire('pointerdown',{target:s.element('sensitivity')});
+  screen.fire('click',{target:screen});
+  assert.equal(screen.open,true);
+  screen.fire('pointerdown',{target:screen});screen.fire('click',{target:screen});
+  assert.equal(screen.open,false);
+  s.element('openControls').fire('click');
+  const start={isPrimary:true,button:0,pointerId:1,clientX:100,clientY:200};
+  handle.fire('pointerdown',start);handle.fire('pointerup',{...start,clientY:225});
+  assert.equal(screen.open,true);
+  handle.fire('pointerdown',start);handle.fire('pointerup',{...start,clientY:260});
+  assert.equal(screen.open,false);
 });
 test('iPhone standalone uses screen height when viewport omits the status-bar area',()=>{
   const s=setup({standalone:true,innerHeight:797});assert.equal(s.cssProperties.get('--app-height'),'844px');
@@ -318,8 +356,8 @@ test('finger toolbar taps release the pad capture and synchronously focus the iP
   const s=setup();s.pair();const pad=s.element('touchpad');
   pad.fire('pointerdown',{pointerType:'touch',pointerId:50,clientX:80,clientY:80,timeStamp:0});
   assert.equal(pad.captures.size,1);fingerTap(s.element('openControls'));
-  assert.equal(pad.captures.size,0);assert.equal(s.element('controlScreen').hidden,false);
-  fingerTap(s.element('backToTouchpad'));assert.equal(s.element('controlScreen').hidden,true);
+  assert.equal(pad.captures.size,0);assert.equal(s.element('controlScreen').open,true);
+  fingerTap(s.element('backToTouchpad'));assert.equal(s.element('controlScreen').open,false);
   fingerTap(s.element('openKeyboard'));assert.equal(s.element('keyboardDialog').open,true);assert.equal(s.element('keyboardText').focused,true);
   s.element('keyboardText').value='draft';s.element('openKeyboard').fire('click',{detail:1,pointerType:'touch'});
   assert.equal(s.element('keyboardText').value,'draft');

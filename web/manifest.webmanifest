@@ -1,12 +1,12 @@
 {
   "id": "/",
-  "name": "Remote — тачпад ноутбука",
-  "short_name": "Remote",
+  "name": "PocketPointer — тачпад ноутбука",
+  "short_name": "PocketPointer",
   "lang": "ru",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0d121a",
-  "theme_color": "#0d121a",
-  "icons": [{"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+  "background_color": "#202c43",
+  "theme_color": "#202c43",
+  "icons": [{"src": "/remote-icon-v2.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}]
 }

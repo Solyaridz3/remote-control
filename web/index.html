@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0d121a">
+  <meta id="themeColor" name="theme-color" content="#202c43">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Remote">
-  <title>Remote · iPhone → Windows</title>
-  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <meta name="apple-mobile-web-app-title" content="PocketPointer">
+  <title>PocketPointer · iPhone → Windows</title>
+  <link rel="icon" href="/remote-icon-v2.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/apple-touch-icon-v2.png" sizes="180x180">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/app.css">
+  <script src="/locale.js" defer></script>
   <script src="/viewport.js" defer></script>
   <script src="/keyboard.js" defer></script>
   <script src="/gestures.js" defer></script>
@@ -21,84 +23,115 @@
   <main>
     <section id="touchScreen" class="touch-screen" aria-label="Тачпад">
       <header class="touch-toolbar">
-        <div><h1>Remote<span class="title-dot">.</span></h1><p id="touchConnection" role="status">Офлайн</p></div>
-        <button id="openControls" class="panel-button" type="button" aria-controls="controlScreen">Пункт управления</button>
+        <div class="brand">
+          <img src="/remote-icon-v2.png" width="44" height="44" alt="">
+          <div><h1>PocketPointer</h1><p id="touchConnection" role="status">Офлайн</p></div>
+        </div>
+        <button id="openControls" class="panel-button" type="button" aria-haspopup="dialog" aria-controls="controlScreen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h4m4 0h10M3 12h10m4 0h4M3 18h4m4 0h10"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>
+          <span>Пункт управления</span>
+        </button>
         <div class="toolbar-actions">
-          <button id="openKeyboard" class="keyboard-toggle" type="button" aria-label="Открыть клавиатуру" aria-controls="keyboardDialog" disabled>
+          <button id="openKeyboard" class="toolbar-tile" type="button" aria-label="Открыть клавиатуру" aria-controls="keyboardDialog" disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 15h10"/></svg>
             <span>Клавиатура</span>
           </button>
-          <label id="magnifierToggle" class="magnifier-toggle"><input id="magnifierEnabled" type="checkbox" disabled><span>Лупа</span></label>
-          <label id="screenToggle" class="magnifier-toggle"><input id="screenEnabled" type="checkbox" disabled><span>Экран</span></label>
+          <label id="magnifierToggle" class="toolbar-tile">
+            <input id="magnifierEnabled" type="checkbox" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
+            <span>Лупа</span>
+          </label>
+          <label id="screenToggle" class="toolbar-tile">
+            <input id="screenEnabled" type="checkbox" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M12 17v4m-4 0h8"/></svg>
+            <span>Экран</span>
+          </label>
         </div>
       </header>
       <section id="touchpad" class="touchpad" aria-label="Тачпад ноутбука" aria-describedby="gestureHelp">
         <img id="screenImage" class="screen-image" alt="Область экрана ноутбука вокруг курсора" draggable="false" hidden>
-        <div class="pad-top"><span>ТАЧПАД</span><span id="padState">WI-FI</span></div>
-        <div class="pad-center" aria-hidden="true">
-          <svg viewBox="0 0 48 48" width="48" height="48" fill="none"><path d="m14 7 24 19-13 2-7 12-4-33Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-          <span id="padHint">ВАШ ТАЧПАД</span>
-        </div>
+        <span id="padState" class="pad-state" role="status" hidden></span>
         <span class="pad-help" id="gestureHelp">Касание — клик · Разведение — растянуть</span>
         <span id="touchDot" class="touch-dot" hidden></span>
         <span id="screenStatus" class="screen-status" role="status" hidden></span>
       </section>
       <div class="home-gesture-space" aria-hidden="true"></div>
     </section>
-    <section id="controlScreen" class="controls control-screen" aria-label="Пункт управления" hidden>
-      <button id="backToTouchpad" class="back-button" type="button" aria-controls="touchScreen">Назад к тачпаду</button>
-      <header>
-        <div><h1>Пункт управления</h1><p id="computer">iPhone → Windows</p></div>
-        <span id="badge" class="badge"><span class="status-dot"></span><span id="badgeText">Офлайн</span></span>
+  </main>
+
+  <dialog id="controlScreen" class="control-sheet" aria-labelledby="controlTitle">
+    <div class="sheet-frame">
+      <div id="controlHandle" class="sheet-handle" aria-hidden="true"></div>
+      <header class="sheet-heading">
+        <h2 id="controlTitle">Пункт управления</h2>
+        <button id="backToTouchpad" class="close" type="button" aria-label="Закрыть пункт управления" autofocus>×</button>
       </header>
-      <section class="volume" aria-label="Громкость ноутбука">
-        <h2>ГРОМКОСТЬ НОУТБУКА</h2>
-        <div class="volume-buttons">
-          <button type="button" data-volume="down" aria-label="Уменьшить громкость" disabled>
-            <svg viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="M16 12h6"/></svg><span>Тише</span>
-          </button>
-          <button type="button" data-volume="mute" aria-label="Включить или выключить звук" disabled>
-            <svg viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="m16 9 6 6m0-6-6 6"/></svg><span>Звук</span>
-          </button>
-          <button type="button" data-volume="up" aria-label="Увеличить громкость" disabled>
-            <svg viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="M19 9v6m-3-3h6"/></svg><span>Громче</span>
-          </button>
-        </div>
-      </section>
-      <section class="magnifier-panel" aria-labelledby="magnifierTitle">
-        <div class="magnifier-heading"><h2 id="magnifierTitle">НАСТРОЙКИ ЛУПЫ</h2></div>
-        <label for="magnifierRadius">Радиус круга <output id="magnifierRadiusValue">160 px</output></label>
-        <input id="magnifierRadius" type="range" min="80" max="280" step="10" value="160">
-        <label for="magnifierZoom">Увеличение <output id="magnifierZoomValue">2.0×</output></label>
-        <input id="magnifierZoom" type="range" min="150" max="400" step="10" value="200">
-        <label for="magnifierMode">Положение лупы</label>
-        <select id="magnifierMode"><option value="center">Вокруг курсора</option><option value="offset">Сбоку от курсора</option></select>
-        <p id="magnifierStatus" role="status">Подключитесь к ноутбуку, чтобы включить лупу.</p>
-      </section>
-      <div class="connection-buttons">
-        <button id="connect" class="primary" type="button"><span id="connectLabel">Подключить ноутбук</span></button>
-        <button id="disconnect" class="power" type="button" aria-label="Отключиться от ноутбука" disabled>
-          <svg viewBox="0 0 24 24"><path d="M12 3v9m-5-7a9 9 0 1 0 10 0"/></svg>
-        </button>
-      </div>
-      <p id="status" class="status" role="status" aria-live="polite">Откройте Remote на ноутбуке и подключитесь по коду.</p>
-      <details class="settings">
-        <summary>Жесты и настройки <span aria-hidden="true">＋</span></summary>
-        <div class="settings-content">
-          <p id="rememberedInfo" hidden>Телефон запомнен. При открытии страницы он подключится без кода. Отозвать доступ можно в Windows → «Сохранённые устройства».</p>
+      <div id="controlBody" class="sheet-body">
+        <fieldset class="sheet-card theme-picker">
+          <legend class="visually-hidden">Тема оформления</legend>
+          <p class="card-title" aria-hidden="true">Тема оформления</p>
+          <div class="theme-options">
+            <label><input id="themeLight" type="radio" name="theme" value="light"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M19 5l-2 2M7 17l-2 2"/></svg>Светлая</span></label>
+            <label><input id="themeDark" type="radio" name="theme" value="dark" checked><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 15A8.5 8.5 0 0 1 9 3.5 8.5 8.5 0 1 0 20.5 15Z"/></svg>Тёмная</span></label>
+          </div>
+        </fieldset>
+        <section class="sheet-card volume" aria-labelledby="volumeTitle">
+          <h3 id="volumeTitle" class="card-title">Громкость ноутбука</h3>
+          <div class="volume-buttons">
+            <button type="button" data-volume="down" aria-label="Уменьшить громкость" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="M16 12h6"/></svg><span>Тише</span>
+            </button>
+            <button type="button" data-volume="mute" aria-label="Включить или выключить звук" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="m16 9 6 6m0-6-6 6"/></svg><span>Звук</span>
+            </button>
+            <button type="button" data-volume="up" aria-label="Увеличить громкость" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Z"/><path d="M19 9v6m-3-3h6"/></svg><span>Громче</span>
+            </button>
+          </div>
+        </section>
+        <section class="sheet-card connection" aria-labelledby="computer">
+          <div class="connection-heading">
+            <h3 id="computer" class="card-title">iPhone → Windows</h3>
+            <span id="badge" class="badge"><span class="status-dot"></span><span id="badgeText">Офлайн</span></span>
+          </div>
+          <div class="connection-buttons">
+            <button id="connect" class="primary" type="button"><span id="connectLabel">Подключить ноутбук</span></button>
+            <button id="disconnect" class="power" type="button" aria-label="Отключиться от ноутбука" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9m-5-7a9 9 0 1 0 10 0"/></svg>
+            </button>
+          </div>
+          <p id="status" class="status" role="status" aria-live="polite">Откройте PocketPointer на ноутбуке и подключитесь по коду.</p>
+          <p id="rememberedInfo" class="status" hidden>Телефон запомнен. При открытии страницы он подключится без кода. Отозвать доступ можно в Windows → «Сохранённые устройства».</p>
+        </section>
+        <section class="sheet-card regulators" aria-labelledby="gestureTitle">
+          <h3 id="gestureTitle" class="card-title">Тачпад</h3>
           <label for="sensitivity">Чувствительность <output id="sensitivityValue">1.5×</output></label>
           <input id="sensitivity" type="range" min="0.5" max="3" step="0.1" value="1.5">
           <label class="smooth-choice"><input id="smoothing" type="checkbox" checked> Плавный курсор</label>
-          <p>Смягчает мелкие рывки движения. Можно выключить, если предпочитаете более резкую реакцию.</p>
-          <p>Один палец — курсор. Касание — левый клик. Два быстрых касания — двойной клик. Для выделения или перетаскивания: коснитесь дважды, на втором касании не отпускайте палец и ведите его. Во время перетаскивания можно поднять палец и в течение 0,8 секунды коснуться тачпада в другом месте, чтобы продолжить. Чтобы отпустить объект, подождите 0,8 секунды или коротко коснитесь тачпада. Касание двумя пальцами — правый клик. Совместное движение двух пальцев — прокрутка. Разводите или сводите пальцы — плавно увеличивайте или уменьшайте изображение в программе под курсором.</p>
-          <p>Перед жестом наведите курсор на изображение. Результат зависит от поддержки pinch в программе и версии Windows. После начала прокрутки отпустите пальцы, чтобы начать растягивание.</p>
-          <p>Для значка на iPhone: Safari → «Поделиться» → «На экран Домой». Пока пользуетесь тачпадом, держите страницу открытой.</p>
-          <p class="privacy">Управление, текст и трансляция защищены HTTPS. Перед первым подключением установите и проверьте сертификат по инструкции в окне Remote на ноутбуке. При сворачивании связь прерывается; сохранённый телефон подключается снова при возвращении.</p>
-        </div>
-      </details>
-      <footer>ЛОКАЛЬНАЯ СВЯЗЬ <span>БЕЗ ОБЛАКА</span></footer>
-    </section>
-  </main>
+          <p>Смягчает мелкие рывки движения.</p>
+        </section>
+        <section class="sheet-card regulators" aria-labelledby="magnifierTitle">
+          <h3 id="magnifierTitle" class="card-title">Настройки лупы</h3>
+          <label for="magnifierRadius">Радиус круга <output id="magnifierRadiusValue">160 px</output></label>
+          <input id="magnifierRadius" type="range" min="80" max="280" step="10" value="160">
+          <label for="magnifierZoom">Увеличение <output id="magnifierZoomValue">2.0×</output></label>
+          <input id="magnifierZoom" type="range" min="150" max="400" step="10" value="200">
+          <label for="magnifierMode">Положение лупы</label>
+          <select id="magnifierMode"><option value="center">Вокруг курсора</option><option value="offset">Сбоку от курсора</option></select>
+          <p id="magnifierStatus" role="status">Подключитесь к ноутбуку, чтобы включить лупу.</p>
+        </section>
+        <details class="sheet-card settings">
+          <summary>Как пользоваться жестами</summary>
+          <div class="settings-content">
+            <p>Один палец — курсор. Касание — левый клик. Два быстрых касания — двойной клик. Для выделения или перетаскивания коснитесь дважды, на втором касании не отпускайте палец и ведите его. Во время перетаскивания можно поднять палец и в течение 0,8 секунды коснуться тачпада в другом месте, чтобы продолжить. Чтобы отпустить объект, подождите 0,8 секунды или коротко коснитесь тачпада.</p>
+            <p>Касание двумя пальцами — правый клик. Совместное движение двух пальцев — прокрутка. Разводите или сводите пальцы, чтобы изменить масштаб. Перед жестом наведите курсор на изображение. Результат зависит от приложения и версии Windows. После начала прокрутки отпустите пальцы, чтобы начать растягивание.</p>
+            <p>Для значка на iPhone откройте меню Safari «Поделиться» и выберите «На экран Домой». При сворачивании связь прерывается. Сохранённый телефон подключается снова при возвращении.</p>
+            <p>Управление, текст и трансляция защищены HTTPS. Для первого подключения установите и проверьте сертификат по инструкции в окне PocketPointer на ноутбуке.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="keyboardDialog" class="keyboard-dialog" aria-labelledby="keyboardTitle">
     <div class="dialog-heading"><h2 id="keyboardTitle">Клавиатура</h2><button id="closeKeyboard" class="close" type="button" aria-label="Закрыть клавиатуру">×</button></div>
@@ -110,7 +143,7 @@
   <dialog id="pairing" aria-labelledby="pairingTitle">
     <form id="pairingForm">
       <div class="dialog-heading"><h2 id="pairingTitle">Подключение</h2><button id="closePairing" class="close" type="button" aria-label="Закрыть">×</button></div>
-      <p>Введите код из окна Remote на ноутбуке.</p>
+      <p>Введите код из окна PocketPointer на ноутбуке.</p>
       <label for="code">КОД ПОДКЛЮЧЕНИЯ</label>
       <input id="code" name="code" type="text" minlength="12" maxlength="12" pattern="[0-9A-Fa-f]{12}" placeholder="A1B2C3D4E5F6" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
       <label class="remember-choice"><input id="remember" type="checkbox" checked> Запомнить устройство</label>

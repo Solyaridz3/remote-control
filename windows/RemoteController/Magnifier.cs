@@ -66,7 +66,7 @@ namespace RemoteController
         public LensWindow(bool inspectWindow)
         {
             this.inspectWindow = inspectWindow;
-            Text = "Remote · Лупа";
+            Text = UiText.Get("PocketPointer · Лупа");
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = inspectWindow;
             BackColor = Color.FromArgb(106, 227, 185);
